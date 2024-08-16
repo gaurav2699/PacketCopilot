@@ -1,0 +1,4 @@
+streamlit==1.31.1
+langchain_community
+langchain
+langchain_experimental
