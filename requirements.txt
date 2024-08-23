@@ -3,7 +3,6 @@
 # Core libraries
 langchain==0.0.329
 openai==0.27.8
-qdrant-client==1.6.2
 streamlit==1.26.0
 langchain_community
 langchain_experimental
@@ -19,7 +18,7 @@ python-docx==0.8.11
 PyPDF2==3.0.1
 
 # Vector store
-chromadb==0.4.13
+qdrant-client==1.6.2
 
 # Misc utilities
 python-dotenv==1.0.0
