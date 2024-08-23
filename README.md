@@ -9,3 +9,4 @@ streamlit run .\main.py --server.maxUploadSize <max_size_files>
 Updates : 
 streamlit run streamlit_app.py
 ```
+![Uploading image.png…]()
