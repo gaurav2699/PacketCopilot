@@ -4,6 +4,7 @@ import streamlit as st
 from rag_system import RAGSystem
 from db_operations import DatabaseManager
 import os
+import tempfile
 
 # Initialize session state
 if 'rag_system' not in st.session_state:
@@ -24,10 +25,6 @@ def initialize_systems():
     rag_system = RAGSystem(openai_api_key, qdrant_url, collection_name)
     db_manager = DatabaseManager(db_url)
     
-    # Load documents (you might want to make this configurable)
-    documents_directory = "path/to/your/documents"
-    rag_system.add_documents(documents_directory)
-    
     return rag_system, db_manager
 
 st.title("RAG Chatbot")
@@ -36,12 +33,31 @@ st.title("RAG Chatbot")
 if st.session_state.rag_system is None or st.session_state.db_manager is None:
     st.session_state.rag_system, st.session_state.db_manager = initialize_systems()
 
-# User authentication (simple version, consider using a more secure method in production)
+# User authentication
 username = st.text_input("Enter your username:")
 if username:
     st.session_state.user_id = st.session_state.db_manager.get_or_create_user(username)
 
 if st.session_state.user_id:
+    # File Upload Section
+    st.subheader("Upload Document")
+    uploaded_file = st.file_uploader("Choose a file", type=['txt', 'pdf', 'docx'])
+    if uploaded_file is not None:
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as tmp_file:
+            tmp_file.write(uploaded_file.getvalue())
+            tmp_file_path = tmp_file.name
+
+        try:
+            # Process and add the document to the RAG system
+            st.session_state.rag_system.add_documents(tmp_file_path)
+            st.success(f"File {uploaded_file.name} has been successfully added to the knowledge base.")
+        except Exception as e:
+            st.error(f"An error occurred while processing the file: {str(e)}")
+        finally:
+            # Remove the temporary file
+            os.unlink(tmp_file_path)
+
     # Chat interface
     st.subheader("Chat")
 
