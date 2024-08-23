@@ -7,7 +7,7 @@ from langchain.vectorstores import Qdrant
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.llms import OpenAI
 from langchain.chains import RetrievalQA
-from langchain.document_loaders import DirectoryLoader
+from langchain.document_loaders import TextLoader, PyPDFLoader, Docx2txtLoader
 from langchain.schema import Document
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
@@ -37,8 +37,18 @@ class RAGSystem:
             embeddings=HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
         )
 
-    def load_and_process_documents(self, directory: str) -> List[Document]:
-        loader = DirectoryLoader(directory, glob="**/*.txt")
+    def load_and_process_documents(self, file_path: str) -> List[Document]:
+        _, file_extension = os.path.splitext(file_path)
+        
+        if file_extension.lower() == '.txt':
+            loader = TextLoader(file_path)
+        elif file_extension.lower() == '.pdf':
+            loader = PyPDFLoader(file_path)
+        elif file_extension.lower() in ['.docx', '.doc']:
+            loader = Docx2txtLoader(file_path)
+        else:
+            raise ValueError(f"Unsupported file type: {file_extension}")
+        
         documents = loader.load()
         
         text_splitter = RecursiveCharacterTextSplitter(
@@ -58,8 +68,8 @@ class RAGSystem:
             verbose=True
         )
 
-    def add_documents(self, directory: str):
-        documents = self.load_and_process_documents(directory)
+    def add_documents(self, file_path: str):
+        documents = self.load_and_process_documents(file_path)
         self.vector_store.add_documents(documents)
 
     def query(self, question: str):
