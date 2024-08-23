@@ -1,0 +1,86 @@
+import os
+from typing import List
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.vectorstores import Qdrant
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.llms import OpenAI
+from langchain.chains import RetrievalQA
+from langchain.document_loaders import DirectoryLoader
+from langchain.schema import Document
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, VectorParams
+
+# Set up your OpenAI API key
+os.environ["OPENAI_API_KEY"] = "your-api-key-here"
+
+# Initialize Qdrant client
+qdrant_client = QdrantClient(
+    url="http://localhost:6333",  # Replace with your Qdrant server URL if not local
+)
+
+# Define constants
+COLLECTION_NAME = "my_documents"
+EMBEDDING_DIMENSION = 384  # Dimension for 'all-MiniLM-L6-v2' model
+
+def initialize_vector_store():
+    """Initialize or get the Qdrant collection."""
+    collections = qdrant_client.get_collections().collections
+    if not any(collection.name == COLLECTION_NAME for collection in collections):
+        qdrant_client.create_collection(
+            collection_name=COLLECTION_NAME,
+            vectors_config=VectorParams(size=EMBEDDING_DIMENSION, distance=Distance.COSINE),
+        )
+    return Qdrant(client=qdrant_client, collection_name=COLLECTION_NAME, 
+                  embeddings=HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2"))
+
+def load_and_process_documents(directory: str) -> List[Document]:
+    """Load documents from a directory and split them into chunks."""
+    loader = DirectoryLoader(directory, glob="**/*.txt")
+    documents = loader.load()
+    
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200,
+        length_function=len,
+    )
+    return text_splitter.split_documents(documents)
+
+def setup_qa_chain(vector_store):
+    """Set up the question-answering chain."""
+    retriever = vector_store.as_retriever(search_kwargs={"k": 5})
+    return RetrievalQA.from_chain_type(
+        llm=OpenAI(temperature=0),
+        chain_type="stuff",
+        retriever=retriever,
+        return_source_documents=True,
+        verbose=True
+    )
+
+def main():
+    # Initialize vector store
+    vector_store = initialize_vector_store()
+    
+    # Load and process documents
+    documents = load_and_process_documents("path/to/your/document/directory")
+    
+    # Add documents to vector store
+    vector_store.add_documents(documents)
+    
+    # Set up QA chain
+    qa_chain = setup_qa_chain(vector_store)
+    
+    # Example usage
+    while True:
+        query = input("Enter your question (or 'quit' to exit): ")
+        if query.lower() == 'quit':
+            break
+        
+        result = qa_chain({"query": query})
+        print("\nAnswer:", result["result"])
+        print("\nSources:")
+        for doc in result["source_documents"]:
+            print(f"- {doc.metadata.get('source', 'Unknown source')}")
+        print("\n" + "-"*50 + "\n")
+
+if __name__ == "__main__":
+    main()
