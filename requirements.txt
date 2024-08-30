@@ -1,24 +1,11 @@
-# requirements.txt
-
-# Core libraries
 langchain==0.0.329
 openai==0.27.8
 streamlit==1.26.0
 langchain_community
 langchain_experimental
-
-# Embedding and NLP
 sentence-transformers==2.2.2
-
-# Database
 psycopg2-binary==2.9.7
-
-# Document loading and processing
 python-docx==0.8.11
 PyPDF2==3.0.1
-
-# Vector store
 qdrant-client==1.6.2
-
-# Misc utilities
 python-dotenv==1.0.0

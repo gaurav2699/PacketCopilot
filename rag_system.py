@@ -9,6 +9,7 @@ from langchain.llms import OpenAI
 from langchain.chains import RetrievalQA
 from langchain.document_loaders import TextLoader, PyPDFLoader, Docx2txtLoader
 from langchain.schema import Document
+from langchain_openai import AzureChatOpenAI
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
 
@@ -18,8 +19,11 @@ class RAGSystem:
         self.qdrant_url = qdrant_url
         self.collection_name = collection_name
         self.embedding_dimension = 384  # Dimension for 'all-MiniLM-L6-v2' model
-        
-        os.environ["OPENAI_API_KEY"] = self.openai_api_key
+
+        os.environ["AZURE_OPENAI_API_KEY"] = openai_api_key
+        os.environ["AZURE_OPENAI_ENDPOINT"] = "https://openai2699.openai.azure.com/"
+        print(f"OpenAI API Key: {os.getenv('AZURE_OPENAI_API_KEY')}")
+
         self.qdrant_client = QdrantClient(url=self.qdrant_url)
         self.vector_store = self.initialize_vector_store()
         self.qa_chain = self.setup_qa_chain()
@@ -32,14 +36,14 @@ class RAGSystem:
                 vectors_config=VectorParams(size=self.embedding_dimension, distance=Distance.COSINE),
             )
         return Qdrant(
-            client=self.qdrant_client, 
+            client=self.qdrant_client,
             collection_name=self.collection_name,
             embeddings=HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
         )
 
     def load_and_process_documents(self, file_path: str) -> List[Document]:
         _, file_extension = os.path.splitext(file_path)
-        
+
         if file_extension.lower() == '.txt':
             loader = TextLoader(file_path)
         elif file_extension.lower() == '.pdf':
@@ -48,9 +52,9 @@ class RAGSystem:
             loader = Docx2txtLoader(file_path)
         else:
             raise ValueError(f"Unsupported file type: {file_extension}")
-        
+
         documents = loader.load()
-        
+
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
             chunk_overlap=200,
@@ -60,8 +64,16 @@ class RAGSystem:
 
     def setup_qa_chain(self):
         retriever = self.vector_store.as_retriever(search_kwargs={"k": 5})
+        llm = AzureChatOpenAI(
+            azure_deployment="packetcopilot2",  # or your deployment
+            api_version="2023-06-01-preview",  # or your api version
+            temperature=0,
+            max_tokens=None,
+            timeout=None,
+            max_retries=2
+        )
         return RetrievalQA.from_chain_type(
-            llm=OpenAI(temperature=0),
+            llm=llm,
             chain_type="stuff",
             retriever=retriever,
             return_source_documents=True,

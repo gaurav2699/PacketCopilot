@@ -2,8 +2,9 @@
 
 import streamlit as st
 from rag_system import RAGSystem
-from db_operations import DatabaseManager
+from db_operations import *
 import os
+import getpass
 import tempfile
 
 # Initialize session state
@@ -21,10 +22,10 @@ def initialize_systems():
     qdrant_url = st.secrets["QDRANT_URL"]
     collection_name = "my_documents"
     db_url = st.secrets["DATABASE_URL"]
-    
+
     rag_system = RAGSystem(openai_api_key, qdrant_url, collection_name)
     db_manager = DatabaseManager(db_url)
-    
+
     return rag_system, db_manager
 
 st.title("RAG Chatbot")
@@ -63,7 +64,7 @@ if st.session_state.user_id:
 
     # Load chat history
     chat_history = st.session_state.db_manager.get_chat_history(st.session_state.user_id)
-    
+
     for message in chat_history:
         with st.chat_message(message["role"]):
             st.write(message["content"])
@@ -71,7 +72,7 @@ if st.session_state.user_id:
     if prompt := st.chat_input("What is your question?"):
         # Add user message to database
         st.session_state.db_manager.add_message(st.session_state.user_id, "user", prompt)
-        
+
         with st.chat_message("user"):
             st.write(prompt)
 
@@ -95,6 +96,6 @@ if st.session_state.user_id:
     if st.sidebar.button("Clear Chat History"):
         # In a real application, you might want to add a confirmation dialog
         # and actually delete the history from the database
-        st.experimental_rerun()
+        st.rerun()
 else:
     st.info("Please enter a username to start chatting.")
