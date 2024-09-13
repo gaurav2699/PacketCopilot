@@ -1,6 +1,8 @@
 import re
+import os
 import json
 import argparse
+import subprocess
 
 # Load filters from external JSON file
 def load_filters(json_file):
@@ -39,8 +41,12 @@ if __name__ == "__main__":
     parser.add_argument('filters_file', type=str, help='Path to the JSON file with include/exclude filters.')
 
     args = parser.parse_args()
-
+    # PowerShell command to be executed
+    command = f'pktmon etl2txt "{args.input_file}"'
+    # Execute the PowerShell command
+    result = subprocess.run(["powershell", "-Command", command], capture_output=True, text=True)
     # Process the large file using line-by-line approach
-    process_large_file_line_by_line(args.input_file, args.output_file, args.filters_file)
+    txt_file = os.path.splitext(args.input_file)[0] + ".txt"
+    process_large_file_line_by_line(txt_file, args.output_file, args.filters_file)
     
     print("Processing complete. Check the filtered output file.")
