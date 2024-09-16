@@ -1,0 +1,23 @@
+{
+      "include": [
+        "successfully forwarded a packet from",
+        "has finished processing outbound packets on port",
+        "has finished processing inbound packets on port",
+        "processed outbound packets on port",
+        "processed inbound packets on port",
+        "A flow matched",
+        "created outbound unified flow",
+        "created inbound unified flow",
+        "routed from Nic",
+        "delivered to Nic",
+        "received from Nic",
+        "\\bmatched\\b.*\\bflow\\b",
+        "^Error.*" 
+      ],
+      "exclude": [
+        "failed to forward packet from",
+        "found no match in layer"
+      ],
+      "default": "include"
+}
+  

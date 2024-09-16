@@ -28,7 +28,7 @@ def initialize_systems():
 
     return rag_system, db_manager
 
-st.title("RAG Chatbot")
+st.title("Packet Copilot")
 
 # Initialize systems if not already done
 if st.session_state.rag_system is None or st.session_state.db_manager is None:
@@ -42,7 +42,7 @@ if username:
 if st.session_state.user_id:
     # File Upload Section
     st.subheader("Upload Document")
-    uploaded_file = st.file_uploader("Choose a file", type=['txt', 'pdf', 'docx'])
+    uploaded_file = st.file_uploader("Choose a file", type=['txt', 'pdf', 'docx', 'etl', 'pcap'])
     if uploaded_file is not None:
         # Create a temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as tmp_file:
@@ -82,9 +82,6 @@ if st.session_state.user_id:
         # Display assistant response
         with st.chat_message("assistant"):
             st.write(response["answer"])
-            st.write("Sources:")
-            for source in response["sources"]:
-                st.write(f"- {source}")
 
         # Add assistant response to database
         st.session_state.db_manager.add_message(st.session_state.user_id, "assistant", response["answer"])
