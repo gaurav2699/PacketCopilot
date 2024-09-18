@@ -65,7 +65,6 @@ class RAGSystem:
 
     def generate_priming(self):
         log_summary = " ".join([page.page_content for page in self.pages[:5]])
-        print (log_summary)
         return self.returnSystemText(log_summary)
 
     def load_and_process_documents(self, file_path: str) -> List[Document]:
@@ -126,11 +125,15 @@ class RAGSystem:
 
     def add_documents(self, file_path: str):
         documents = self.load_and_process_documents(file_path)
-        self.priming_text = self.generate_priming()
-        self.vector_store.add_documents(documents)
+        if st.session_state.username == "admin":
+            self.vector_store.add_documents(documents)
+        else:
+            self.priming_text = self.generate_priming()
 
     def query(self, question: str):
-        result = self.qa_chain({"context": self.priming_text, "query": question})
+        print (self.priming_text)
+        query = self.priming_text + "\n\n" + question
+        result = self.qa_chain.invoke(query)
         return {
             "answer": result["result"]
         }
