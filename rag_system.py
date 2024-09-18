@@ -14,16 +14,14 @@ from langchain.document_loaders import TextLoader, PyPDFLoader, Docx2txtLoader, 
 from langchain.schema import Document
 from preprocess import *
 import streamlit as st
-import torch
 from langchain_openai import AzureChatOpenAI
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
 
 @st.cache_resource
 def load_model():
-    torch.cuda.empty_cache()
     with st.spinner("Downloading Instructor XL Embeddings Model locally....please be patient"):
-        embedding_model=HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-large", model_kwargs={"device": "cuda"})
+        embedding_model=HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-large")
     return embedding_model
 
 class RAGSystem:
@@ -33,6 +31,7 @@ class RAGSystem:
         self.collection_name = collection_name
         self.embedding_dimension = 768 # Dimension of the embeddings
         self.embedding_model = load_model()
+        self.priming_text = ""
         os.environ["AZURE_OPENAI_API_KEY"] = openai_api_key
         os.environ["AZURE_OPENAI_ENDPOINT"] = "https://openai2699.openai.azure.com/"
         print(f"OpenAI API Key: {os.getenv('AZURE_OPENAI_API_KEY')}")
@@ -54,9 +53,8 @@ class RAGSystem:
             collection_name=self.collection_name,
             embeddings=self.embedding_model)
 
-    def returnSystemText(log_data : str) -> str:
+    def returnSystemText(self, log_data):
         PACKET_WHISPERER = f"""
-            {st.session_state['system_message']}
             log_info : {log_data}
         """
         return PACKET_WHISPERER
@@ -66,7 +64,8 @@ class RAGSystem:
         subprocess.run(command, shell=True)
 
     def generate_priming(self):
-        log_summary = " ".join([str(page) for page in self.pages])
+        log_summary = " ".join([page.page_content for page in self.pages[:5]])
+        print (log_summary)
         return self.returnSystemText(log_summary)
 
     def load_and_process_documents(self, file_path: str) -> List[Document]:
@@ -127,11 +126,8 @@ class RAGSystem:
 
     def add_documents(self, file_path: str):
         documents = self.load_and_process_documents(file_path)
-        if st.session_state.username == "admin":
-            self.vector_store.add_documents(documents)
-        else:
-            self.priming_text = self.generate_priming()
-        # self.vector_store.add_documents(documents)
+        self.priming_text = self.generate_priming()
+        self.vector_store.add_documents(documents)
 
     def query(self, question: str):
         result = self.qa_chain({"context": self.priming_text, "query": question})

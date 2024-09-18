@@ -38,6 +38,7 @@ if st.session_state.rag_system is None or st.session_state.db_manager is None:
 username = st.text_input("Enter your username:")
 if username:
     st.session_state.user_id = st.session_state.db_manager.get_or_create_user(username)
+    st.session_state.username = username
 
 if st.session_state.user_id:
     # File Upload Section
