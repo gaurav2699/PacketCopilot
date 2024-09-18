@@ -14,12 +14,14 @@ from langchain.document_loaders import TextLoader, PyPDFLoader, Docx2txtLoader, 
 from langchain.schema import Document
 from preprocess import *
 import streamlit as st
+import torch
 from langchain_openai import AzureChatOpenAI
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
 
 @st.cache_resource
 def load_model():
+    torch.cuda.empty_cache()
     with st.spinner("Downloading Instructor XL Embeddings Model locally....please be patient"):
         embedding_model=HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-large", model_kwargs={"device": "cuda"})
     return embedding_model
@@ -52,16 +54,20 @@ class RAGSystem:
             collection_name=self.collection_name,
             embeddings=self.embedding_model)
 
-    def returnSystemText(pcap_data : str) -> str:
+    def returnSystemText(log_data : str) -> str:
         PACKET_WHISPERER = f"""
             {st.session_state['system_message']}
-            log_info : {pcap_data}
+            log_info : {log_data}
         """
         return PACKET_WHISPERER
 
     def pcap_to_json(pcap_path, json_path):
         command = f'tshark -nlr {pcap_path} -T json > {json_path}'
         subprocess.run(command, shell=True)
+
+    def generate_priming(self):
+        log_summary = " ".join([str(page) for page in self.pages])
+        return self.returnSystemText(log_summary)
 
     def load_and_process_documents(self, file_path: str) -> List[Document]:
         _, file_extension = os.path.splitext(file_path)
@@ -121,10 +127,14 @@ class RAGSystem:
 
     def add_documents(self, file_path: str):
         documents = self.load_and_process_documents(file_path)
-        self.vector_store.add_documents(documents)
+        if st.session_state.username == "admin":
+            self.vector_store.add_documents(documents)
+        else:
+            self.priming_text = self.generate_priming()
+        # self.vector_store.add_documents(documents)
 
     def query(self, question: str):
-        result = self.qa_chain({"query": question})
+        result = self.qa_chain({"context": self.priming_text, "query": question})
         return {
             "answer": result["result"]
         }
