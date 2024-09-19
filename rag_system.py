@@ -12,6 +12,8 @@ from langchain.llms import OpenAI
 from langchain.chains import RetrievalQA
 from langchain.document_loaders import TextLoader, PyPDFLoader, Docx2txtLoader, JSONLoader
 from langchain.schema import Document
+from langchain.memory import ConversationBufferMemory
+from langchain import PromptTemplate
 from preprocess import *
 import streamlit as st
 from langchain_openai import AzureChatOpenAI
@@ -31,7 +33,9 @@ class RAGSystem:
         self.collection_name = collection_name
         self.embedding_dimension = 768 # Dimension of the embeddings
         self.embedding_model = load_model()
-        self.priming_text = ""
+        self.setup_conversation_memory()
+        self.setup_prompt()
+        self.priming_text = 'N'
         os.environ["AZURE_OPENAI_API_KEY"] = openai_api_key
         os.environ["AZURE_OPENAI_ENDPOINT"] = "https://openai2699.openai.azure.com/"
         print(f"OpenAI API Key: {os.getenv('AZURE_OPENAI_API_KEY')}")
@@ -63,6 +67,28 @@ class RAGSystem:
         command = f'tshark -nlr {pcap_path} -T json > {json_path}'
         subprocess.run(command, shell=True)
 
+    def setup_conversation_memory(self):
+        self.memory = ConversationBufferMemory(memory_key="history", input_key="question", return_messages=True)
+
+    def setup_prompt(self):
+        template = """
+        Use the following context (delimited by <ctx></ctx>) and the chat history (delimited by <hs></hs>) to answer the question:
+        ------
+        <ctx>
+        {context}
+        </ctx>
+        -------
+        <hs>
+        {history}
+        </hs>
+        ------
+        {question}
+        Answer:
+        """
+        self.prompt = PromptTemplate(
+            input_variables=["history", "context", "question"],
+            template=template,
+        )
     def generate_priming(self):
         log_summary = " ".join([page.page_content for page in self.pages[:5]])
         return self.returnSystemText(log_summary)
@@ -120,7 +146,12 @@ class RAGSystem:
             chain_type="stuff",
             retriever=retriever,
             return_source_documents=False,
-            verbose=True
+            verbose=True,
+            chain_type_kwargs={
+                "verbose": True,
+                "prompt": self.prompt,
+                "memory": self.memory,
+            }
         )
 
     def add_documents(self, file_path: str):
