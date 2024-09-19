@@ -19,3 +19,5 @@ streamlit run streamlit_app.py
 - python-docx
 - PyPDF2
 - unstructured
+### Running the script : 
+python script_name.py /path/to/your/documents
