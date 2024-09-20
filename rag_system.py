@@ -34,8 +34,8 @@ class RAGSystem:
         self.embedding_dimension = 768 # Dimension of the embeddings
         self.embedding_model = load_model()
         self.setup_conversation_memory()
+        self.priming_text = ''
         self.setup_prompt()
-        self.priming_text = 'N'
         os.environ["AZURE_OPENAI_API_KEY"] = openai_api_key
         os.environ["AZURE_OPENAI_ENDPOINT"] = "https://openai2699.openai.azure.com/"
         print(f"OpenAI API Key: {os.getenv('AZURE_OPENAI_API_KEY')}")
@@ -77,7 +77,7 @@ class RAGSystem:
         <ctx>
         {context}
         </ctx>
-        -------
+        --------
         <hs>
         {history}
         </hs>
@@ -85,10 +85,7 @@ class RAGSystem:
         {question}
         Answer:
         """
-        self.prompt = PromptTemplate(
-            input_variables=["history", "context", "question"],
-            template=template,
-        )
+        self.prompt = PromptTemplate.from_template(template)
     def generate_priming(self):
         log_summary = " ".join([page.page_content for page in self.pages[:5]])
         return self.returnSystemText(log_summary)
@@ -159,12 +156,12 @@ class RAGSystem:
         if st.session_state.username == "admin":
             self.vector_store.add_documents(documents)
         else:
-            self.priming_text = self.generate_priming()
+            self.priming_text += self.generate_priming()
 
     def query(self, question: str):
-        print (self.priming_text)
         query = self.priming_text + "\n\n" + question
-        result = self.qa_chain.invoke(query)
+        self.priming_text = ""
+        result = self.qa_chain.invoke({"query": query})
         return {
             "answer": result["result"]
         }

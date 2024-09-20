@@ -25,6 +25,7 @@ def initialize_systems():
 
     rag_system = RAGSystem(openai_api_key, qdrant_url, collection_name)
     db_manager = DatabaseManager(db_url)
+    st.session_state.file_uploaded = False
 
     return rag_system, db_manager
 
@@ -44,7 +45,7 @@ if st.session_state.user_id:
     # File Upload Section
     st.subheader("Upload Document")
     uploaded_file = st.file_uploader("Choose a file", type=['txt', 'pdf', 'docx', 'etl', 'pcap'])
-    if uploaded_file is not None:
+    if uploaded_file is not None and st.session_state.file_uploaded == False:
         # Create a temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as tmp_file:
             tmp_file.write(uploaded_file.getvalue())
@@ -52,8 +53,10 @@ if st.session_state.user_id:
 
         try:
             # Process and add the document to the RAG system
+            print("Adding document to the knowledge base...\n")
             st.session_state.rag_system.add_documents(tmp_file_path)
             st.success(f"File {uploaded_file.name} has been successfully added to the knowledge base.")
+            st.session_state.file_uploaded = True
         except Exception as e:
             st.error(f"An error occurred while processing the file: {str(e)}")
         finally:
