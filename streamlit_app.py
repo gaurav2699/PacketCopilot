@@ -44,7 +44,7 @@ if username:
 if st.session_state.user_id:
     # File Upload Section
     st.subheader("Upload Document")
-    uploaded_file = st.file_uploader("Choose a file", type=['txt', 'pdf', 'docx', 'etl', 'pcap'])
+    uploaded_file = st.file_uploader("Choose a file", type=['txt', 'pdf', 'docx', 'etl', 'pcap', 'zip'])
     if uploaded_file is not None and st.session_state.file_uploaded == False:
         # Create a temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as tmp_file:

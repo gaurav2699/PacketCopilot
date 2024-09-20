@@ -16,6 +16,7 @@ from langchain.memory import ConversationBufferMemory
 from langchain import PromptTemplate
 from preprocess import *
 import streamlit as st
+import zipfile
 from langchain_openai import AzureChatOpenAI
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
@@ -36,6 +37,7 @@ class RAGSystem:
         self.setup_conversation_memory()
         self.priming_text = ''
         self.setup_prompt()
+        self.pages = []
         os.environ["AZURE_OPENAI_API_KEY"] = openai_api_key
         os.environ["AZURE_OPENAI_ENDPOINT"] = "https://openai2699.openai.azure.com/"
         print(f"OpenAI API Key: {os.getenv('AZURE_OPENAI_API_KEY')}")
@@ -87,7 +89,7 @@ class RAGSystem:
         """
         self.prompt = PromptTemplate.from_template(template)
     def generate_priming(self):
-        log_summary = " ".join([page.page_content for page in self.pages[:5]])
+        log_summary = " ".join([page.page_content for page in self.pages])
         return self.returnSystemText(log_summary)
 
     def load_and_process_documents(self, file_path: str) -> List[Document]:
@@ -112,11 +114,20 @@ class RAGSystem:
             json_path = file_path + ".json"
             self.pcap_to_json(file_path, json_path)
             loader = JSONLoader(file_path)
+        elif file_extension.lower() == '.zip':
+            with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                extract_path = os.path.splitext(file_path)[0]
+                zip_ref.extractall(extract_path)
+                documents = []
+                for root, _, files in os.walk(extract_path):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        documents.extend(self.load_and_process_documents(file_path))
+                return documents
 
         else:
             raise ValueError(f"Unsupported file type: {file_extension}")
-
-        self.pages = loader.load_and_split()
+        self.pages.extend(loader.load_and_split())
         self.text_splitter = SemanticChunker(self.embedding_model)
 
         # documents = loader.load()
