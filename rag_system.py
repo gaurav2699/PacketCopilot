@@ -95,38 +95,43 @@ class RAGSystem:
     def load_and_process_documents(self, file_path: str) -> List[Document]:
         _, file_extension = os.path.splitext(file_path)
 
-        if file_extension.lower() == '.txt':
-            # loader = TextLoader(file_path)
-            loader = TextLoader(file_path)
-        elif file_extension.lower() == '.pdf':
-            loader = PyPDFLoader(file_path)
-        elif file_extension.lower() in ['.docx', '.doc']:
-            loader = Docx2txtLoader(file_path)
-        elif file_extension.lower() == '.etl':
-            final_path = file_path + '.txt'
-            command = f'pktmon etl2txt "{file_path}"'
-            # Execute the PowerShell command
-            subprocess.run(["powershell", "-Command", command], capture_output=True, text=True)
-            txt_file = os.path.splitext(file_path)[0] + ".txt"
-            process_large_file_line_by_line(txt_file, final_path, "filters.json")
-            loader = TextLoader(final_path)
-        elif file_extension.lower() == '.pcap':
-            json_path = file_path + ".json"
-            self.pcap_to_json(file_path, json_path)
-            loader = JSONLoader(file_path)
-        elif file_extension.lower() == '.zip':
-            with zipfile.ZipFile(file_path, 'r') as zip_ref:
-                extract_path = os.path.splitext(file_path)[0]
-                zip_ref.extractall(extract_path)
-                documents = []
-                for root, _, files in os.walk(extract_path):
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        documents.extend(self.load_and_process_documents(file_path))
-                return documents
+        try:
+            if file_extension.lower() == '.txt':
+                # loader = TextLoader(file_path)
+                loader = TextLoader(file_path)
+            elif file_extension.lower() == '.pdf':
+                loader = PyPDFLoader(file_path)
+            elif file_extension.lower() in ['.docx', '.doc']:
+                loader = Docx2txtLoader(file_path)
+            elif file_extension.lower() == '.etl':
+                final_path = file_path + '.txt'
+                command = f'pktmon etl2txt "{file_path}"'
+                # Execute the PowerShell command
+                subprocess.run(["powershell", "-Command", command], capture_output=True, text=True)
+                txt_file = os.path.splitext(file_path)[0] + ".txt"
+                process_large_file_line_by_line(txt_file, final_path, "filters.json")
+                loader = TextLoader(final_path)
+            elif file_extension.lower() == '.pcap':
+                json_path = file_path + ".json"
+                self.pcap_to_json(file_path, json_path)
+                loader = JSONLoader(file_path)
+            elif file_extension.lower() == '.zip':
+                with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                    extract_path = os.path.splitext(file_path)[0]
+                    zip_ref.extractall(extract_path)
+                    documents = []
+                    for root, _, files in os.walk(extract_path):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            documents.extend(self.load_and_process_documents(file_path))
+                    return documents
 
-        else:
-            raise ValueError(f"Unsupported file type: {file_extension}")
+            else:
+                raise ValueError(f"Unsupported file type: {file_extension}")
+        except ValueError as e:
+            print(f"Error processing file {file_path}: {e}")
+            return []
+        
         self.pages.extend(loader.load_and_split())
         self.text_splitter = SemanticChunker(self.embedding_model)
 
